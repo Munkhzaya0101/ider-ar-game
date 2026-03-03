@@ -3,30 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AR Танилцуулга</title>
+  <title>AR Start</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- A-Frame -->
+  <script src="https://unpkg.com/aframe@1.5.0/dist/aframe.min.js"></script>
+  <!-- MindAR (A-Frame build) -->
+  <script src="https://unpkg.com/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    body { margin: 0; font-family: system-ui, -apple-system, Arial; }
+    body { margin:0; font-family: system-ui, -apple-system, Arial; background:#111; color:#fff; }
     a-scene { position: fixed; inset: 0; }
-    #overlay {
-      position: fixed; inset: 0; z-index: 9999;
-      display: flex; flex-direction: column; gap: 12px;
-      justify-content: center; align-items: center;
-      background: rgba(0,0,0,0.78); color: #fff; padding: 24px;
-      text-align: center;
+    #overlay{
+      position: fixed; inset:0; z-index:9999;
+      display:flex; flex-direction:column; gap:12px;
+      justify-content:center; align-items:center;
+      background:rgba(0,0,0,.78); padding:24px; text-align:center;
     }
-    button { padding: 12px 16px; border-radius: 12px; border: 0; font-size: 16px; }
-    #log { opacity: .9; font-size: 13px; max-width: 560px; }
+    button{ padding:12px 16px; border-radius:12px; border:0; font-size:16px; }
+    #log{ font-size:13px; opacity:.9; max-width:560px; }
   </style>
 </head>
 <body>
   <div id="overlay">
     <div><b>AR Start</b> — Доорх товчийг дарж камераа асаана</div>
     <button id="startBtn">Start AR</button>
-    <div id="log">Log: waiting…</div>
+    <div id="log">Log: loading…</div>
   </div>
 
   <a-scene
@@ -34,34 +35,44 @@
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: true"
   >
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-    <!-- target зураг танигдвал хавтан гарна -->
     <a-entity mindar-image-target="targetIndex: 0">
       <a-plane position="0 0 0" width="0.8" height="0.45"></a-plane>
     </a-entity>
   </a-scene>
 
   <script>
-    const setLog = (msg) => (document.getElementById("log").textContent = "Log: " + msg);
+    const logEl = document.getElementById("log");
+    const setLog = (m) => logEl.textContent = "Log: " + m;
 
-    window.addEventListener("error", (e) => setLog("ERROR: " + (e.message || e.type)));
-    window.addEventListener("unhandledrejection", (e) => setLog("REJECT: " + (e.reason?.message || e.reason)));
+    // DEBUG: scripts loaded?
+    setLog("AFRAME=" + (typeof AFRAME !== "undefined") + ", mindar-comp=" + (AFRAME?.components?.["mindar-image"] ? "yes" : "no"));
+
+    async function waitMindarOnScene(timeoutMs = 8000) {
+      const sceneEl = document.querySelector("a-scene");
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const mindar = sceneEl?.components?.["mindar-image"];
+        if (mindar) return mindar;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      return null;
+    }
 
     document.getElementById("startBtn").addEventListener("click", async () => {
       try {
-        setLog("Starting…");
-        const sceneEl = document.querySelector("a-scene");
-        const mindar = sceneEl.components["mindar-image"];
+        setLog("Starting… (waiting mindar-image on scene)");
+        const mindar = await waitMindarOnScene();
         if (!mindar) {
-          setLog("mindar-image component not ready yet. Refresh and try again.");
+          setLog("mindar-image component олдсонгүй. Script ачаалсан эсэхийг шалга (mindar-comp=yes байх ёстой).");
           return;
         }
         await mindar.start();
         document.getElementById("overlay").style.display = "none";
         setLog("Started ✅");
-      } catch (err) {
-        setLog("Start failed: " + (err?.message || String(err)));
+      } catch (e) {
+        setLog("Start failed: " + (e?.message || String(e)));
       }
     });
   </script>
